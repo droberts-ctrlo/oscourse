@@ -2,15 +2,15 @@
 plugin_ctrl: pcidev=false, extfpuirq=true, serial=true, usb_ehci=false, unmapped=true, pcipnic=false, voodoo=false, es1370=false, usb_xhci=false, ne2k=false, parallel=true, busmouse=false, usb_uhci=false, usb_ohci=false, gameport=true, iodebug=true, sb16=false, biosdev=true, e1000=false, speaker=true
 config_interface: textconfig
 display_library: x
-memory: guest=1024, host=1024, block_size=128
+memory: guest=1024, host=1024
 romimage: file="/usr/share/bochs/BIOS-bochs-latest", address=0x00000000, options=none, flash_data=none
 vgaromimage: file="/usr/share/bochs/VGABIOS-lgpl-latest"
 boot: disk
 floppy_bootsig_check: disabled=0
-floppya: type=1_44
+# no floppya
 # no floppyb
 ata0: enabled=true, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
-ata0-master: type=disk, path="boot.img", mode=flat, cylinders=0, heads=0, spt=0, sect_size=512, model="Generic 1234", biosdetect=auto, translation=auto
+ata0-master: type=disk, path="boot.img", mode=flat, cylinders=20, heads=16, spt=63, sect_size=512, model="Generic 1234", biosdetect=auto, translation=auto
 ata0-slave: type=none
 ata1: enabled=true, ioaddr1=0x170, ioaddr2=0x370, irq=15
 ata1-master: type=none
@@ -25,7 +25,7 @@ optramimage1: file=none
 optramimage2: file=none
 optramimage3: file=none
 optramimage4: file=none
-pci: enabled=1, chipset=i440fx, slot1=none, slot2=none, slot3=none, slot4=none, slot5=none
+pci: enabled=1, chipset=i440fx
 vga: extension=vbe, update_freq=10, realtime=1, ddc=builtin, vbe_memsize=16
 cpu: count=1:1:1, ips=4000000, quantum=16, model=corei7_haswell_4770, reset_on_triple_fault=1, cpuid_limit_winnt=0, ignore_bad_msrs=1, mwait_is_nop=0
 print_timestamps: enabled=0
