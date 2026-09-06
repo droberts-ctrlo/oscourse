@@ -21,7 +21,7 @@ End:
     hlt
     jmp End
 
-Message db 'Welcome to DavR OS', 0
+Message db 'Welcome to Orion', 0
 MessageLength equ $ - Message
 
 times (0x1be - ($ - $$)) db 0
