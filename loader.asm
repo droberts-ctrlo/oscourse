@@ -2,19 +2,19 @@
 [ORG 0x7e00]
 
 start:
-    mov ah,0x13
-    mov al,1
-    mov bx,0xa
-    xor dx,dx
-    mov bp,Message
-    mov cx,MessageLength
-    int 0x10
+    mov ah,0x13 ; BIOS teletype output function
+    mov al,1 ; Number of characters to write
+    mov bx,0xa ; Page number and attribute
+    xor dx,dx ; Row and column
+    mov bp,Message ; Pointer to the message
+    mov cx,MessageLength ; Length of the message
+    int 0x10 ; Call BIOS to display the message
     jmp End
 
 End:
-    hlt
-    jmp End
+    hlt ; Halt the CPU
+    jmp End ; Loop indefinitely after halting the CPU
 
-Message db 'Welcome to Orion'
-MessageLength equ $ - Message
+Message db 'Welcome to Orion' ; Message to display
+MessageLength equ $ - Message ; Length of the message
 
