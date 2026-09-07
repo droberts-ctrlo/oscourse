@@ -13,6 +13,21 @@ start:
     cpuid ; Execute the CPUID instruction again to get updated CPU information
     test edx, 1 << 29 ; Check if the specific feature (example: NX bit) is supported
     jz NotSupported ; Jump to NotSupported if the feature is not supported
+    test edx, 1 << 26 ; Check if another specific feature is supported
+    jz NotSupported ; Jump to NotSupported if the feature is not supported
+
+LoadKernel:
+    mov si, ReadPacket ; Create a pointer to the disk read packet
+    mov word[si], 0x10 ; Set the size of the disk read packet (example value)
+    mov word[si+2], 100 ; Set the number of sectors to read (example value)
+    mov word[si+4], 0 ; Set the segment of the memory buffer (example value)
+    mov word[si+6], 0x1000 ; Set the offset of the memory buffer (example value)
+    mov dword[si+8], 6 ; Set the starting LBA (example value)
+    mov dword[si+0xc], 0 ; Set the next field of the disk read packet (example value)
+    mov dl, [DriveID] ; Load the drive ID into DL
+    mov ah, 0x42 ; BIOS extended read function (example value)
+    int 0x13 ; Call BIOS disk services to perform the read
+    jc ReadError ; Jump to ReadError if the disk read fails
 
     mov ah, 0x13 ; BIOS disk services function (example: extended read/write)
     mov al, 1 ; Number of sectors to read
@@ -22,11 +37,13 @@ start:
     mov cx,MessageLength ; Length of the message
     int 0x10 ; BIOS interrupt to display the message
 
+ReadError:
 NotSupported:
 End:
     hlt ; Halt the CPU
     jmp End ; Loop indefinitely after halting the CPU
 
-Message db 'Welcome to Orion' ; Message to display
+Message db 'Kernel Loaded' ; Message to display
 MessageLength equ $ - Message ; Length of the message
 DriveID db 0 ; Store the drive ID passed in DL
+ReadPacket times 16 db 0 ; Disk read packet
