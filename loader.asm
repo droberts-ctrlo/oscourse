@@ -92,12 +92,49 @@ PMEntry:
     mov ss, ax ; Set SS to the video mode segment (0x10 for 80x25 text mode)
     mov esp, 0x7c00 ; Set ESP to the top of the bootloader stack area
 
-    mov byte[0xb8000], 'P' ; Display the byte 'P' at the beginning of video memory
-    mov byte[0xb8001], 0x07 ; Set the attribute for the displayed character (white on black)
+    cld ; clear direction flag
+    mov edi, 0x70000 ; Set EDI to the start of the memory copy destination
+    xor eax, eax ; Clear EAX register before starting the memory copy
+    mov ecx, 0x10000/4 ; Set ECX to the number of double words to copy (0x10000 bytes / 4 bytes per double word)
+    rep stosd ; Repeat storing EAX into the memory destination pointed by EDI for ECX times
+
+    mov dword[0x70000], 0x71007 ; Initialize the first double word of the memory copy destination to 0
+    mov dword[0x71000], 10000111b ; Initialize the second double word of the memory copy destination to 10000111b
+
+    lgdt [Gdt32Ptr] ; Load the GDT pointer into the GDTR register
+
+    mov eax, cr4 ; Load the control register CR4 into EAX
+    or eax, (1<<5) ; Set the PAE (Physical Address Extension) bit in CR4
+    mov cr4, eax ; Write back to CR4 to enable PAE
+
+    mov eax, 0x70000 ; Load the base address of the memory copy destination into EAX
+    mov cr3, eax ; Load the base address of the memory copy destination into CR3 for paging
+
+    mov ecx, 0xc0000080 ; Load the address of the MSR (Model-Specific Register) for enabling PAE into ECX
+    rdmsr ; Read the MSR into EDX:EAX
+    or eax, (1<<8) ; Set the NXE (No-Execute Enable) bit in the MSR
+    wrmsr ; Write the updated value back to the MSR
+
+    mov eax, cr0 ; Load the control register CR0 into EAX
+    or eax, (1<<31) ; Set the PG (Paging) bit in CR0 to enable paging
+    mov cr0, eax ; Write back to CR0 to enable paging
+
+    jmp 0x8:LMEntry
 
 PEnd:
     hlt ; Halt the CPU
     jmp PEnd ; Loop indefinitely after halting the CPU
+
+[BITS 64]
+LMEntry:
+    mov rsp, 0x7c00 ; Set RSP to the top of the bootloader stack area
+
+    mov byte[0xb8000], 'L' ; Display 'L' on the screen at the top-left corner
+    mov byte[0xb8001], 0xa ; Set the color attribute for the character to white on black
+
+LEnd:
+    hlt ; Halt the CPU
+    jmp LEnd ; Loop indefinitely after halting the CPU
 
 DriveID db 0 ; Store the drive ID passed in DL
 ReadPacket times 16 db 0 ; Disk read packet
@@ -126,3 +163,12 @@ Gdt32Ptr: dw Gdt32Len - 1 ; Limit for the GDT
 
 Idt32Ptr: dw 0 ; Limit for the IDT
           dd 0 ; Base address for the IDT
+
+Gdt64:
+    dq 0x0 ; Null descriptor for the GDT
+    dq 0x0020980000000000 ; Code segment descriptor for 64-bit code
+
+Gdt64Len: equ $ - Gdt64
+
+Gdt64Ptr: dw Gdt64Len - 1 ; Limit for the GDT
+          dd Gdt64 ; Base address for the GDT
