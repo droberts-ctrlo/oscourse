@@ -64,13 +64,24 @@ SetA20LineDone:
     xor ax, ax ; Clear AX register after setting the A20 line
     mov es, ax ; Clear ES register after setting the A20 line
 
-    mov ah, 0x13 ; BIOS disk services function (extended read/write)
-    mov al, 1 ; Number of sectors to read
-    mov bx, 0xa ; Page number and attribute
-    xor dx, dx ; clear DX register
-    mov bp,Message ; Pointer to the message
-    mov cx,MessageLength ; Length of the message
-    int 0x10 ; BIOS interrupt to display the message
+SetVideoMode:
+    mov ax, 3 ; Set video mode to 80x25 text mode
+    int 0x10 ; BIOS interrupt to set the video mode
+
+    mov si, Message ; Set SI to point to the message to display
+    mov ax, 0xb800 ; Set AX to the segment address for text mode video memory
+    mov es, ax ; Set ES to the segment address for text mode video memory
+    xor di, di ; Clear DI register to start writing at the beginning of the video memory segment
+    mov cx, MessageLength ; Set CX to the length of the message
+
+PrintMessage:
+    mov al, [si] ; Load the next character of the message into AL
+    mov [es:di], al ; Store the character in video memory
+    mov byte[es:di+1], 0xa ; Set the attribute for the character in video memory
+
+    add di, 2 ; Move to the next character position in video memory
+    add si, 1 ; Move to the next character in the message
+    loop PrintMessage ; Loop until all characters of the message are displayed
 
 ReadError:
 NotSupported:
@@ -78,7 +89,7 @@ End:
     hlt ; Halt the CPU
     jmp End ; Loop indefinitely after halting the CPU
 
-Message db 'Kernel Loaded' ; Message to display
+Message db 'Welcome to Orion...' ; Message to display
 MessageLength equ $ - Message ; Length of the message
 DriveID db 0 ; Store the drive ID passed in DL
 ReadPacket times 16 db 0 ; Disk read packet
