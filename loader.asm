@@ -29,6 +29,27 @@ LoadKernel:
     int 0x13 ; Call BIOS disk services to perform the read
     jc ReadError ; Jump to ReadError if the disk read fails
 
+GetMemInfoStart:
+    mov eax, 0xe820
+    mov edx, 0x534d4150 ; 'SMAP' signature for the e820 memory map
+    mov ecx, 20 ; Size of the buffer for the e820 memory map entry
+    mov edi, 0x9000 ; Set the destination buffer for the e820 memory map entry
+    xor ebx, ebx ; Clear EBX register for the e820 memory map continuation value
+    int 0x15 ; BIOS interrupt to get the e820 memory map entry
+    jc NotSupported ; Jump to NotSupported if the e820 memory map retrieval fails
+
+GetMemInfo:
+    add edi, 20 ; Move to the next e820 memory map entry
+    mov eax, 0xe820 ; Set EAX to the e820 memory map function
+    mov edx, 0x534d4150 ; 'SMAP' signature for the e820 memory map
+    mov ecx, 20 ; Size of the buffer for the e820 memory map entry
+    int 0x15 ; BIOS interrupt to get the e820 memory map entry
+    jc GetMemDone ; Jump to GetMemDone if the e820 memory map retrieval is complete
+
+    test ebx, ebx ; Check if there are more e820 memory map entries
+    jnz GetMemInfo ; Jump to GetMemInfo if there are more entries
+
+GetMemDone:
     mov ah, 0x13 ; BIOS disk services function (extended read/write)
     mov al, 1 ; Number of sectors to read
     mov bx, 0xa ; Page number and attribute
