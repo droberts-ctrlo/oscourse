@@ -68,20 +68,15 @@ SetVideoMode:
     mov ax, 3 ; Set video mode to 80x25 text mode
     int 0x10 ; BIOS interrupt to set the video mode
 
-    mov si, Message ; Set SI to point to the message to display
-    mov ax, 0xb800 ; Set AX to the segment address for text mode video memory
-    mov es, ax ; Set ES to the segment address for text mode video memory
-    xor di, di ; Clear DI register to start writing at the beginning of the video memory segment
-    mov cx, MessageLength ; Set CX to the length of the message
+    cli
+    lgdt [Gdt32Ptr]
+    lidt [Idt32Ptr]
 
-PrintMessage:
-    mov al, [si] ; Load the next character of the message into AL
-    mov [es:di], al ; Store the character in video memory
-    mov byte[es:di+1], 0xa ; Set the attribute for the character in video memory
+    mov eax, cr0 ; Load the control register CR0 into EAX
+    or eax, 0x1 ; Set the PE (Protection Enable) bit in CR0 to enable protected mode
+    mov cr0, eax ; Write back to CR0 to enable protected mode
 
-    add di, 2 ; Move to the next character position in video memory
-    add si, 1 ; Move to the next character in the message
-    loop PrintMessage ; Loop until all characters of the message are displayed
+    jmp 0x08:PMEntry
 
 ReadError:
 NotSupported:
@@ -89,7 +84,45 @@ End:
     hlt ; Halt the CPU
     jmp End ; Loop indefinitely after halting the CPU
 
-Message db 'Welcome to Orion...' ; Message to display
-MessageLength equ $ - Message ; Length of the message
+[BITS 32]
+PMEntry:
+    mov ax, 0x10 ; Set AX to the video mode (0x10 for 80x25 text mode)
+    mov ds, ax ; Set DS to the video mode segment (0x10 for 80x25 text mode)
+    mov es, ax ; Set ES to the video mode segment (0x10 for 80x25 text mode)
+    mov ss, ax ; Set SS to the video mode segment (0x10 for 80x25 text mode)
+    mov esp, 0x7c00 ; Set ESP to the top of the bootloader stack area
+
+    mov byte[0xb8000], 'P' ; Display the byte 'P' at the beginning of video memory
+    mov byte[0xb8001], 0x07 ; Set the attribute for the displayed character (white on black)
+
+PEnd:
+    hlt ; Halt the CPU
+    jmp PEnd ; Loop indefinitely after halting the CPU
+
 DriveID db 0 ; Store the drive ID passed in DL
 ReadPacket times 16 db 0 ; Disk read packet
+
+Gdt32:
+    dq 0x0 ; Null descriptor for the GDT
+Code32:
+    dw 0xFFFF ; Limit low for the code segment
+    dw 0 ; Base low for the code segment
+    db 0 ; Base middle for the code segment
+    db 0x9a ; Access byte for the code segment
+    db 0xcf ; 
+    db 0 ; Base high for the code segment
+Data32:
+    dw 0xFFFF ; Limit low for the code segment
+    dw 0 ; Base low for the code segment
+    db 0 ; Base middle for the code segment
+    db 0x92 ; Access byte for the data segment
+    db 0xcf ; 
+    db 0 ; Base high for the code segment
+
+Gdt32Len: equ $ - Gdt32
+
+Gdt32Ptr: dw Gdt32Len - 1 ; Limit for the GDT
+          dd Gdt32 ; Base address for the GDT
+
+Idt32Ptr: dw 0 ; Limit for the IDT
+          dd 0 ; Base address for the IDT
