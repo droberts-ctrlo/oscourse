@@ -50,6 +50,20 @@ GetMemInfo:
     jnz GetMemInfo ; Jump to GetMemInfo if there are more entries
 
 GetMemDone:
+TestA20:
+    mov ax, 0xffff ; Set AX to 0xFFFF to test the A20 line
+    mov es, ax ; Set ES to 0xFFFF to test the A20 line
+    mov word[ds:0x7c00], 0xa200 ; Store the test value for the A20 line
+    cmp word[es:0x7c00], 0xa200 ; Compare the test value for the A20 line
+    jne SetA20LineDone ; Jump to SetA20LineDone if the A20 line test fails
+    mov word[0x7c00], 0xb200 ; Refresh the test value for the A20 line
+    mov word[es:0x7c00], 0xb200 ; Refresh the test value for the A20 line
+    je End ; Jump to End if the A20 line test passes
+
+SetA20LineDone:
+    xor ax, ax ; Clear AX register after setting the A20 line
+    mov es, ax ; Clear ES register after setting the A20 line
+
     mov ah, 0x13 ; BIOS disk services function (extended read/write)
     mov al, 1 ; Number of sectors to read
     mov bx, 0xa ; Page number and attribute
