@@ -129,8 +129,21 @@ PEnd:
 LMEntry:
     mov rsp, 0x7c00 ; Set RSP to the top of the bootloader stack area
 
-    mov byte[0xb8000], 'L' ; Display 'L' on the screen at the top-left corner
+    ; I plan on moving this to a loop with a message buffer and automatic character placement
+    mov byte[0xb8000], 'W' ; Display 'W' on the screen at the top-left corner
     mov byte[0xb8001], 0xa ; Set the color attribute for the character to white on black
+    mov byte[0xb8002], 'e' ; Display 'e' on the screen at the top-left corner
+    mov byte[0xb8003], 0xa ; Set the color attribute for the character to white on black
+    mov byte[0xb8004], 'l' ; Display 'l' on the screen at the top-left corner
+    mov byte[0xb8005], 0xa ; Set the color attribute for the character to white on black
+    mov byte[0xb8006], 'c' ; Display 'c' on the screen at the top-left corner
+    mov byte[0xb8007], 0xa ; Set the color attribute for the character to white on black
+    mov byte[0xb8008], 'o' ; Display 'o' on the screen at the top-left corner
+    mov byte[0xb8009], 0xa ; Set the color attribute for the character to white on black
+    mov byte[0xb800a], 'm' ; Display 'm' on the screen at the top-left corner
+    mov byte[0xb800b], 0xa ; Set the color attribute for the character to white on black
+    mov byte[0xb800c], 'e' ; Display 'e' on the screen at the top-left corner
+    mov byte[0xb800d], 0xa ; Set the color attribute for the character to white on black
 
 LEnd:
     hlt ; Halt the CPU
