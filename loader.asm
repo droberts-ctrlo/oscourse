@@ -129,21 +129,19 @@ PEnd:
 LMEntry:
     mov rsp, 0x7c00 ; Set RSP to the top of the bootloader stack area
 
-    ; I plan on moving this to a loop with a message buffer and automatic character placement
-    mov byte[0xb8000], 'W' ; Display 'W' on the screen at the top-left corner
-    mov byte[0xb8001], 0xa ; Set the color attribute for the character to white on black
-    mov byte[0xb8002], 'e' ; Display 'e' on the screen at the top-left corner
-    mov byte[0xb8003], 0xa ; Set the color attribute for the character to white on black
-    mov byte[0xb8004], 'l' ; Display 'l' on the screen at the top-left corner
-    mov byte[0xb8005], 0xa ; Set the color attribute for the character to white on black
-    mov byte[0xb8006], 'c' ; Display 'c' on the screen at the top-left corner
-    mov byte[0xb8007], 0xa ; Set the color attribute for the character to white on black
-    mov byte[0xb8008], 'o' ; Display 'o' on the screen at the top-left corner
-    mov byte[0xb8009], 0xa ; Set the color attribute for the character to white on black
-    mov byte[0xb800a], 'm' ; Display 'm' on the screen at the top-left corner
-    mov byte[0xb800b], 0xa ; Set the color attribute for the character to white on black
-    mov byte[0xb800c], 'e' ; Display 'e' on the screen at the top-left corner
-    mov byte[0xb800d], 0xa ; Set the color attribute for the character to white on black
+    lea rsi, [Message] ; Load the address of the message into RSI
+    mov rdi, 0xb8000 ; Set RDI to the start of the VGA text buffer
+
+MessageLoop:
+    mov al, [rsi] ; Load the next character from the message into AL
+    cmp al, 0 ; Check if the character is the null terminator
+    je LEnd ; If the character is the null terminator, jump to the end of the message
+
+    mov [rdi], al ; Store the character in the VGA text buffer
+    mov byte [rdi+1], 0x0a ; Set the color attribute for the character to white on black
+    add rsi, 1 ; Move to the next character in the message
+    add rdi, 2 ; Move to the next character position in the VGA text buffer
+    jmp MessageLoop ; Repeat the loop for the next character
 
 LEnd:
     hlt ; Halt the CPU
@@ -151,6 +149,8 @@ LEnd:
 
 DriveID db 0 ; Store the drive ID passed in DL
 ReadPacket times 16 db 0 ; Disk read packet
+
+Message db 'Welcome to Orion...', 0 ; Message to display
 
 Gdt32:
     dq 0x0 ; Null descriptor for the GDT
