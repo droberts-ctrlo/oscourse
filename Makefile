@@ -1,12 +1,13 @@
-all: boot.asm loader.asm
-	@echo "Starting build process"
-	@echo "Building Orion boot image"
+all: boot.asm loader.asm kernel.asm
 	@nasm -f bin -o boot.bin boot.asm
-	@echo "Building Orion loader"
 	@nasm -f bin -o loader.bin loader.asm
-	@echo "Writing loader to image"
+	@nasm -f elf64 -o kernel.o kernel.asm
+	@gcc -std=c99 -mcmodel=large -ffreestanding -fno-stack-protector -mno-red-zone -c main.c 
+	@ld -nostdlib -T link.lds -o kernel kernel.o main.o
+	@objcopy -O binary kernel kernel.bin 
 	@dd if=boot.bin of=boot.img bs=512 count=1 conv=notrunc
 	@dd if=loader.bin of=boot.img bs=512 count=5 seek=1 conv=notrunc
+	@dd if=kernel.bin of=boot.img bs=512 count=100 seek=6 conv=notrunc
 
 clean:
-	@rm -f boot.bin loader.bin
+	@rm -f boot.bin loader.bin kernel.o main.o kernel kernel.bin
