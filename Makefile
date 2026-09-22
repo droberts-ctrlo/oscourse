@@ -1,24 +1,38 @@
-assembler = nasm
-writer = dd
-name = Orion
-image = boot.img
-runner = bochs
-args = ""
-git = git
+# Variables
+NASM      := nasm
+DD        := dd
+GIT       := git
+BOCHS     := bochs
+BOCHSFLAGS:= 
 
-all: boot.asm loader.asm
-	@echo "Starting build process"
-	@echo "Building $(name) boot image"
-	@$(assembler) -f bin -o boot.bin boot.asm
-	@echo "Building $(name) loader"
-	@$(assembler) -f bin -o loader.bin loader.asm
-	@echo "Writing loader to image"
-	@$(writer) if=boot.bin of=$(image) bs=512 count=1 conv=notrunc
-	@$(writer) if=loader.bin of=$(image) bs=512 count=5 seek=1 conv=notrunc
+NAME      := Orion
+IMAGE     := boot.img
+BINS      := boot.bin loader.bin
 
+# Phony Targets
+.PHONY: all run clean
+
+# Default Target
+all: $(IMAGE)
+
+# Link binaries into the final boot image
+$(IMAGE): $(BINS)
+	@echo "Creating $(NAME) boot image..."
+	@$(GIT) checkout $(IMAGE)
+	@$(DD) if=boot.bin of=$@ bs=512 count=1 conv=notrunc
+	@$(DD) if=loader.bin of=$@ bs=512 count=5 seek=1 conv=notrunc
+
+# Compiling Assembly files
+%.bin: %.asm
+	@echo "Assembling $<..."
+	@$(NASM) -f bin -o $@ $<
+
+# Emulate
 run: all
-	@$(runner) $(args)
+	@$(BOCHS) $(BOCHSFLAGS)
 
+# Clean build artifacts
 clean:
-	@rm -f *.bin
-	@$(git) checkout $(image)
+	@echo "Cleaning workspace..."
+	@rm -f $(BINS)
+	@$(GIT) checkout $(IMAGE)
