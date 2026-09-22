@@ -1,12 +1,23 @@
+assembler = nasm
+writer = dd
+name = Orion
+image = boot.img
+runner = bochs
+args = ""
+
 all: boot.asm loader.asm
 	@echo "Starting build process"
-	@echo "Building Orion boot image"
-	@nasm -f bin -o boot.bin boot.asm
-	@echo "Building Orion loader"
-	@nasm -f bin -o loader.bin loader.asm
+	@echo "Building $(name) boot image"
+	@$(assembler) -f bin -o boot.bin boot.asm
+	@echo "Building $(name) loader"
+	@$(assembler) -f bin -o loader.bin loader.asm
 	@echo "Writing loader to image"
-	@dd if=boot.bin of=boot.img bs=512 count=1 conv=notrunc
-	@dd if=loader.bin of=boot.img bs=512 count=5 seek=1 conv=notrunc
+	@$(writer) if=boot.bin of=$(image) bs=512 count=1 conv=notrunc
+	@$(writer) if=loader.bin of=$(image) bs=512 count=5 seek=1 conv=notrunc
+
+run: all
+	@$(runner) $(args)
 
 clean:
-	@rm -f boot.bin loader.bin
+	@rm -f *.bin
+	@git checkout $(image)
