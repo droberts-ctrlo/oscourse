@@ -4,6 +4,7 @@ name = Orion
 image = boot.img
 runner = bochs
 args = ""
+git = git
 
 all: boot.asm loader.asm
 	@echo "Starting build process"
@@ -20,4 +21,4 @@ run: all
 
 clean:
 	@rm -f *.bin
-	@git checkout $(image)
+	@$(git) checkout $(image)
