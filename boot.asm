@@ -66,5 +66,3 @@ times (0x1be - ($ - $$)) db 0 ; Fill the rest of the boot sector up to the parti
 
     db 0x55 ; Boot sector signature
     db 0xaa ; Boot sector signature
-
-

@@ -129,19 +129,13 @@ PEnd:
 LMEntry:
     mov rsp, 0x7c00 ; Set RSP to the top of the bootloader stack area
 
-    lea rsi, [Message] ; Load the address of the message into RSI
-    mov rdi, 0xb8000 ; Set RDI to the start of the VGA text buffer
+    cld
+    mov rdi, 0x200000
+    mov rsi, 0x10000
+    mov rcx, 51200/8
+    rep movsq
 
-MessageLoop:
-    mov al, [rsi] ; Load the next character from the message into AL
-    cmp al, 0 ; Check if the character is the null terminator
-    je LEnd ; If the character is the null terminator, jump to the end of the message
-
-    mov [rdi], al ; Store the character in the VGA text buffer
-    mov byte [rdi+1], 0x0a ; Set the color attribute for the character to white on black
-    add rsi, 1 ; Move to the next character in the message
-    add rdi, 2 ; Move to the next character position in the VGA text buffer
-    jmp MessageLoop ; Repeat the loop for the next character
+    jmp 0x200000
 
 LEnd:
     hlt ; Halt the CPU
@@ -149,8 +143,6 @@ LEnd:
 
 DriveID db 0 ; Store the drive ID passed in DL
 ReadPacket times 16 db 0 ; Disk read packet
-
-Message db 'Welcome to Orion...', 0 ; Message to display
 
 Gdt32:
     dq 0x0 ; Null descriptor for the GDT
