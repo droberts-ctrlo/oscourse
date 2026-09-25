@@ -2,178 +2,185 @@
 [ORG 0x7e00]
 
 start:
-    mov [DriveID],dl ; Store the drive ID passed in DL
+    mov [DriveId],dl        ; Store the drive ID passed in DL into DriveId variable
 
-    mov eax,0x80000000 ; Set EAX to the extended CPUID function range
-    cpuid ; Execute the CPUID instruction to get CPU information
-    cmp eax,0x80000001 ; Check if the CPU supports the extended CPUID function 0x80000001 (extended features)
-    jb NotSupported ; Jump to NotSupported if the CPU does not support the required feature
+    mov eax,0x80000000      ; Get the highest extended function supported by CPUID
+    cpuid                   ; Call CPUID with EAX=0x80000000
+    cmp eax,0x80000001      ; Check if extended function 0x80000001 is supported
+    jb NotSupport           ; Jump if not supported
 
-    mov eax,0x80000001 ; Set EAX to the extended CPUID function 0x80000001 to check for extended features
-    cpuid ; Execute the CPUID instruction again to get updated CPU information
-    test edx, 1 << 29 ; Check if the long mode (64-bit) feature is supported
-    jz NotSupported ; Jump to NotSupported if the feature is not supported
-    test edx, 1 << 26 ; Check if the 1GB page support feature is available
-    jz NotSupported ; Jump to NotSupported if the feature is not supported
+    mov eax,0x80000001      ; Get extended function 0x80000001
+    cpuid                   ; Call CPUID with EAX=0x80000001
+    test edx,(1<<29)        ; Check if the 64-bit feature is supported
+    jz NotSupport           ; Jump if not supported
+    test edx,(1<<26)        ; Check if the SSE2 feature is supported
+    jz NotSupport           ; Jump if not supported
 
 LoadKernel:
-    mov si, ReadPacket ; Create a pointer to the disk read packet
-    mov word[si], 0x10 ; Set the size of the disk read packet
-    mov word[si+2], 100 ; Set the number of sectors to read
-    mov word[si+4], 0 ; Set the segment of the memory buffer
-    mov word[si+6], 0x1000 ; Set the offset of the memory buffer
-    mov dword[si+8], 6 ; Set the starting LBA
-    mov dword[si+0xc], 0 ; Set the next field of the disk read packet
-    mov dl, [DriveID] ; Load the drive ID into DL
-    mov ah, 0x42 ; BIOS extended read function
-    int 0x13 ; Call BIOS disk services to perform the read
-    jc ReadError ; Jump to ReadError if the disk read fails
+    mov si,ReadPacket       ; Load the address of the read packet structure into SI
+    mov word[si],0x10       ; Set the size of the read packet structure
+    mov word[si+2],100      ; Set the number of sectors to read
+    mov word[si+4],0        ; Set the segment of the buffer
+    mov word[si+6],0x1000   ; Set the offset of the buffer
+    mov dword[si+8],6       ; Set the LBA of the first sector to read
+    mov dword[si+0xc],0     ; Reserved, must be zero
+    mov dl,[DriveId]        ; Load the drive ID into DL for the BIOS read call
+    mov ah,0x42             ; BIOS read sectors function
+    int 0x13                ; Call BIOS interrupt 0x13
+    jc  ReadError           ; Jump if carry flag is set (read error)
 
 GetMemInfoStart:
-    mov eax, 0xe820
-    mov edx, 0x534d4150 ; 'SMAP' signature for the e820 memory map
-    mov ecx, 20 ; Size of the buffer for the e820 memory map entry
-    mov edi, 0x9000 ; Set the destination buffer for the e820 memory map entry
-    xor ebx, ebx ; Clear EBX register for the e820 memory map continuation value
-    int 0x15 ; BIOS interrupt to get the e820 memory map entry
-    jc NotSupported ; Jump to NotSupported if the e820 memory map retrieval fails
+    mov eax,0xe820          ; Get system memory map
+    mov edx,0x534d4150      ; 'SMAP' signature for the memory map
+    mov ecx,20              ; Size of the memory map entry structure
+    mov edi,0x9000          ; Address to store the memory map entry
+    xor ebx,ebx             ; Continuation value, set to 0 for the first call
+    int 0x15                ; Call BIOS interrupt 0x15 to get the memory map
+    jc NotSupport           ; Jump if carry flag is set (not supported)
 
 GetMemInfo:
-    add edi, 20 ; Move to the next e820 memory map entry
-    mov eax, 0xe820 ; Set EAX to the e820 memory map function
-    mov edx, 0x534d4150 ; 'SMAP' signature for the e820 memory map
-    mov ecx, 20 ; Size of the buffer for the e820 memory map entry
-    int 0x15 ; BIOS interrupt to get the e820 memory map entry
-    jc GetMemDone ; Jump to GetMemDone if the e820 memory map retrieval is complete
+    add edi,20              ; Move to the next memory map entry
+    mov eax,0xe820          ; Get system memory map
+    mov edx,0x534d4150      ; 'SMAP' signature for the memory map
+    mov ecx,20              ; Size of the memory map entry structure
+    int 0x15                ; Call BIOS interrupt 0x15 to get the memory map
+    jc GetMemDone           ; Jump if carry flag is set (no more entries or error)
 
-    test ebx, ebx ; Check if there are more e820 memory map entries
-    jnz GetMemInfo ; Jump to GetMemInfo if there are more entries
+    test ebx,ebx            ; Check if there are more memory map entries
+    jnz GetMemInfo          ; Jump to get the next memory map entry if EBX is not zero
 
 GetMemDone:
 TestA20:
-    mov ax, 0xffff ; Set AX to 0xFFFF to test the A20 line
-    mov es, ax ; Set ES to 0xFFFF to test the A20 line
-    mov word[ds:0x7c00], 0xa200 ; Store the test value for the A20 line
-    cmp word[es:0x7c00], 0xa200 ; Compare the test value for the A20 line
-    jne SetA20LineDone ; Jump to SetA20LineDone if the A20 line test fails
-    mov word[0x7c00], 0xb200 ; Refresh the test value for the A20 line
-    mov word[es:0x7c00], 0xb200 ; Refresh the test value for the A20 line
-    je End ; Jump to End if the A20 line test passes
+    mov ax,0xffff                    ; Load 0xffff into AX for A20 line test
+    mov es,ax                        ; Set ES to 0xffff for A20 line test
+    mov word[ds:0x7c00],0xa200       ; Write test value to memory for A20 line test
+    cmp word[es:0x7c10],0xa200       ; Compare with the mirrored address
+    jne SetA20LineDone               ; If not equal, A20 line is already enabled
+    mov word[ds:0x7c00],0xb200       ; Write another test value
+    cmp word[es:0x7c10],0xb200       ; Compare with the mirrored address
+    je End                           ; If equal, A20 line is not enabled, halt
+    
 
 SetA20LineDone:
-    xor ax, ax ; Clear AX register after setting the A20 line
-    mov es, ax ; Clear ES register after setting the A20 line
+    xor ax,ax                        ; Clear AX
+    mov es,ax                        ; Set ES to 0 for A20 line test completion
 
 SetVideoMode:
-    mov ax, 3 ; Set video mode to 80x25 text mode
-    int 0x10 ; BIOS interrupt to set the video mode
+    mov ax,3                        ; Set video mode to 80x25 text mode
+    int 0x10                        ; Call BIOS interrupt 0x10 to set video mode
+    
+    cli                             ; Clear interrupt flag to disable interrupts before entering protected mode
+    lgdt [Gdt32Ptr]                 ; Load the Global Descriptor Table for 32-bit protected mode
+    lidt [Idt32Ptr]                 ; Load the Interrupt Descriptor Table for 32-bit protected mode
 
-    cli
-    lgdt [Gdt32Ptr]
-    lidt [Idt32Ptr]
+    mov eax,cr0                     ; Get the current value of CR0
+    or eax,1                        ; Set the PE (Protection Enable) bit
+    mov cr0,eax                     ; Update CR0 to enable protected mode
 
-    mov eax, cr0 ; Load the control register CR0 into EAX
-    or eax, 0x1 ; Set the PE (Protection Enable) bit in CR0 to enable protected mode
-    mov cr0, eax ; Write back to CR0 to enable protected mode
-
-    jmp 0x08:PMEntry
+    jmp 8:PMEntry                   ; Far jump to the 32-bit protected mode entry point
 
 ReadError:
-NotSupported:
+NotSupport:
 End:
-    hlt ; Halt the CPU
-    jmp End ; Loop indefinitely after halting the CPU
+    hlt                             ; Halt the CPU
+    jmp End                         ; Infinite loop to halt the CPU
+
 
 [BITS 32]
 PMEntry:
-    mov ax, 0x10 ; Set AX to the video mode (0x10 for 80x25 text mode)
-    mov ds, ax ; Set DS to the video mode segment (0x10 for 80x25 text mode)
-    mov es, ax ; Set ES to the video mode segment (0x10 for 80x25 text mode)
-    mov ss, ax ; Set SS to the video mode segment (0x10 for 80x25 text mode)
-    mov esp, 0x7c00 ; Set ESP to the top of the bootloader stack area
+    mov ax,0x10                     ; Set data segment selector for protected mode
+    mov ds,ax                       ; Set DS to the data segment selector
+    mov es,ax                       ; Set ES to the data segment selector
+    mov ss,ax                       ; Set SS to the data segment selector
+    mov esp,0x7c00                  ; Initialize the stack pointer
 
-    cld ; clear direction flag
-    mov edi, 0x70000 ; Set EDI to the start of the memory copy destination
-    xor eax, eax ; Clear EAX register before starting the memory copy
-    mov ecx, 0x10000/4 ; Set ECX to the number of double words to copy (0x10000 bytes / 4 bytes per double word)
-    rep stosd ; Repeat storing EAX into the memory destination pointed by EDI for ECX times
+    cld                             ; Clear the direction flag for string operations
+    mov edi,0x70000                 ; Destination address for memory initialization
+    xor eax,eax                     ; Clear EAX to use as the value for initialization
+    mov ecx,0x10000/4               ; Number of double words to initialize
+    rep stosd                       ; Initialize memory with zeros
+    
+    mov dword[0x70000],0x71007      ; Set up the first memory location with a specific value
+    mov dword[0x71000],10000111b    ; Set up the second memory location with a specific value
 
-    mov dword[0x70000], 0x71007 ; Initialize the first double word of the memory copy destination to 0
-    mov dword[0x71000], 10000111b ; Initialize the second double word of the memory copy destination to 10000111b
 
-    lgdt [Gdt32Ptr] ; Load the GDT pointer into the GDTR register
+    lgdt [Gdt64Ptr]                 ; Load the Global Descriptor Table for 64-bit long mode 
 
-    mov eax, cr4 ; Load the control register CR4 into EAX
-    or eax, (1<<5) ; Set the PAE (Physical Address Extension) bit in CR4
-    mov cr4, eax ; Write back to CR4 to enable PAE
+    mov eax,cr4                     ; Get the current value of CR4
+    or eax,(1<<5)                   ; Set the PAE (Physical Address Extension) bit
+    mov cr4,eax                     ; Update CR4 to enable PAE
 
-    mov eax, 0x70000 ; Load the base address of the memory copy destination into EAX
-    mov cr3, eax ; Load the base address of the memory copy destination into CR3 for paging
+    mov eax,0x70000                  ; Set the base address of the page directory
+    mov cr3,eax                      ; Load the page directory base into CR3
 
-    mov ecx, 0xc0000080 ; Load the address of the MSR (Model-Specific Register) for enabling PAE into ECX
-    rdmsr ; Read the MSR into EDX:EAX
-    or eax, (1<<8) ; Set the NXE (No-Execute Enable) bit in the MSR
-    wrmsr ; Write the updated value back to the MSR
+    mov ecx,0xc0000080               ; IA32_EFER MSR
+    rdmsr                            ; Read the MSR into EDX:EAX
+    or eax,(1<<8)                    ; Set the LME (Long Mode Enable) bit
+    wrmsr                            ; Write the updated value back to the MSR
 
-    mov eax, cr0 ; Load the control register CR0 into EAX
-    or eax, (1<<31) ; Set the PG (Paging) bit in CR0 to enable paging
-    mov cr0, eax ; Write back to CR0 to enable paging
+    mov eax,cr0                     ; Get the current value of CR0
+    or eax,(1<<31)                  ; Set the PG (Paging) bit to enable paging
+    mov cr0,eax                     ; Update CR0 to enable paging
 
-    jmp 0x8:LMEntry
+    jmp 8:LMEntry                   ; Jump to the 64-bit long mode entry point
 
 PEnd:
-    hlt ; Halt the CPU
-    jmp PEnd ; Loop indefinitely after halting the CPU
+    hlt                             ; Halt the CPU
+    jmp PEnd                        ; Infinite loop to halt the CPU
 
 [BITS 64]
 LMEntry:
-    mov rsp, 0x7c00 ; Set RSP to the top of the bootloader stack area
+    mov rsp,0x7c00                  ; Initialize the stack pointer for 64-bit long mode
 
-    cld
-    mov rdi, 0x200000
-    mov rsi, 0x10000
-    mov rcx, 51200/8
-    rep movsq
+    cld                             ; Clear the direction flag for string operations
+    mov rdi,0x200000                ; Destination address for memory copy
+    mov rsi,0x10000                 ; Source address for memory copy
+    mov rcx,51200/8                 ; Number of quad words to copy
+    rep movsq                       ; Copy memory from source to destination
 
-    jmp 0x200000
-
+    jmp 0x200000                    ; Jump to the copied memory location in 64-bit long mode
+    
 LEnd:
-    hlt ; Halt the CPU
-    jmp LEnd ; Loop indefinitely after halting the CPU
+    hlt                             ; Halt the CPU
+    jmp LEnd                        ; Infinite loop to halt the CPU
+    
+    
 
-DriveID db 0 ; Store the drive ID passed in DL
-ReadPacket times 16 db 0 ; Disk read packet
+DriveId:    db 0
+ReadPacket: times 16 db 0
 
 Gdt32:
-    dq 0x0 ; Null descriptor for the GDT
+    dq 0
 Code32:
-    dw 0xFFFF ; Limit low for the code segment
-    dw 0 ; Base low for the code segment
-    db 0 ; Base middle for the code segment
-    db 0x9a ; Access byte for the code segment
-    db 0xcf ; 
-    db 0 ; Base high for the code segment
+    dw 0xffff
+    dw 0
+    db 0
+    db 0x9a
+    db 0xcf
+    db 0
 Data32:
-    dw 0xFFFF ; Limit low for the code segment
-    dw 0 ; Base low for the code segment
-    db 0 ; Base middle for the code segment
-    db 0x92 ; Access byte for the data segment
-    db 0xcf ; 
-    db 0 ; Base high for the code segment
+    dw 0xffff
+    dw 0
+    db 0
+    db 0x92
+    db 0xcf
+    db 0
+    
+Gdt32Len: equ $-Gdt32
 
-Gdt32Len: equ $ - Gdt32
+Gdt32Ptr: dw Gdt32Len-1
+          dd Gdt32
 
-Gdt32Ptr: dw Gdt32Len - 1 ; Limit for the GDT
-          dd Gdt32 ; Base address for the GDT
+Idt32Ptr: dw 0
+          dd 0
 
-Idt32Ptr: dw 0 ; Limit for the IDT
-          dd 0 ; Base address for the IDT
 
 Gdt64:
-    dq 0x0 ; Null descriptor for the GDT
-    dq 0x0020980000000000 ; Code segment descriptor for 64-bit code
+    dq 0
+    dq 0x0020980000000000
 
-Gdt64Len: equ $ - Gdt64
+Gdt64Len: equ $-Gdt64
 
-Gdt64Ptr: dw Gdt64Len - 1 ; Limit for the GDT
-          dd Gdt64 ; Base address for the GDT
+
+Gdt64Ptr: dw Gdt64Len-1
+          dd Gdt64
