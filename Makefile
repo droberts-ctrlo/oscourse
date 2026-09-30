@@ -1,55 +1,53 @@
-# Variables for compilers and flags
-NASM    = nasm
-CC      = gcc
-LD      = ld
+# Variables
+NASM = nasm
+GCC = gcc
+LD = ld
 OBJCOPY = objcopy
-DD      = dd
+DD = dd
 
-CFLAGS  = -std=c99 -mcmodel=large -ffreestanding -fno-stack-protector -mno-red-zone -c
-LDFLAGS = -nostdlib -T link.lds
+# Flags
+NASM_BIN_FLAGS = -f bin
+NASM_ELF_FLAGS = -f elf64
+GCC_FLAGS = -std=c99 -mcmodel=large -ffreestanding -fno-stack-protector -mno-red-zone -c
+LD_FLAGS = -nostdlib -T link.lds
 
-# Target image and its dependencies
-TARGET  = boot.img
-OBJS    = kernel.o main.o trapa.o trap.o
-BINS    = boot.bin loader.bin kernel.bin
+# Targets
+all: boot.img
 
-# Default target
-all: $(TARGET)
+boot.img: boot.bin loader.bin kernel.bin
+	$(DD) if=boot.bin of=boot.img bs=512 count=1 conv=notrunc
+	$(DD) if=loader.bin of=boot.img bs=512 count=5 seek=1 conv=notrunc
+	$(DD) if=kernel.bin of=boot.img bs=512 count=100 seek=6 conv=notrunc
 
-# Create the final bootable disk image
-$(TARGET): boot.bin loader.bin kernel.bin
-	# Initialize/copy boot.bin to the start of the image
-	$(DD) if=boot.bin of=$(TARGET) bs=512 count=1 conv=notrunc
-	# Append loader.bin right after the boot sector
-	$(DD) if=loader.bin of=$(TARGET) bs=512 count=5 seek=1 conv=notrunc
-	# Append kernel.bin at sector 6
-	$(DD) if=kernel.bin of=$(TARGET) bs=512 count=100 seek=6 conv=notrunc
+boot.bin: boot.asm
+	$(NASM) $(NASM_BIN_FLAGS) -o boot.bin boot.asm
 
-# Link the kernel binary
+loader.bin: loader.asm
+	$(NASM) $(NASM_BIN_FLAGS) -o loader.bin loader.asm
+
 kernel.bin: kernel
 	$(OBJCOPY) -O binary kernel kernel.bin
 
-kernel: $(OBJS)
-	$(LD) $(LDFLAGS) -o kernel $(OBJS)
+kernel: kernel.o main.o trapa.o trap.o liba.o
+	$(LD) $(LD_FLAGS) -o kernel kernel.o main.o trapa.o trap.o liba.o
 
-# Pattern rule for raw binary assembly files (boot and loader)
-%.bin: %.asm
-	$(NASM) -f bin -o $@ $<
-
-# Rules for 64-bit ELF assembly objects
 kernel.o: kernel.asm
-	$(NASM) -f elf64 -o $@ $<
+	$(NASM) $(NASM_ELF_FLAGS) -o kernel.o kernel.asm
 
 trapa.o: trap.asm
-	$(NASM) -f elf64 -o $@ $<
+	$(NASM) $(NASM_ELF_FLAGS) -o trapa.o trap.asm
 
-# Pattern rule for C source files
-%.o: %.c
-	$(CC) $(CFLAGS) -o $@ $<
+liba.o: lib.asm
+	$(NASM) $(NASM_ELF_FLAGS) -o liba.o lib.asm
 
-# Clean up build artifacts
+main.o: main.c
+	$(GCC) $(GCC_FLAGS) main.c -o main.o
+
+trap.o: trap.c
+	$(GCC) $(GCC_FLAGS) trap.c -o trap.o
+
 clean:
-	rm -f $(BINS) $(OBJS) kernel
-	git checkout $(TARGET)
+	rm -f *.bin *.o kernel
+	git checkout boot.img
 
 .PHONY: all clean
