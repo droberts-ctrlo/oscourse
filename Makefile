@@ -1,53 +1,62 @@
-# Variables
-NASM = nasm
-GCC = gcc
-LD = ld
+# Variables for tools and flags
+NASM    = nasm
+CC      = gcc
+LD      = ld
 OBJCOPY = objcopy
-DD = dd
+DD      = dd
 
-# Flags
-NASM_BIN_FLAGS = -f bin
-NASM_ELF_FLAGS = -f elf64
-GCC_FLAGS = -std=c99 -mcmodel=large -ffreestanding -fno-stack-protector -mno-red-zone -c
-LD_FLAGS = -nostdlib -T link.lds
+CFLAGS  = -std=c99 -mcmodel=large -ffreestanding -fno-stack-protector -mno-red-zone -c
+LDFLAGS = -nostdlib -T link.lds
 
-# Targets
-all: boot.img
+# Target image
+IMAGE   = boot.img
 
-boot.img: boot.bin loader.bin kernel.bin
-	$(DD) if=boot.bin of=boot.img bs=512 count=1 conv=notrunc
-	$(DD) if=loader.bin of=boot.img bs=512 count=5 seek=1 conv=notrunc
-	$(DD) if=kernel.bin of=boot.img bs=512 count=100 seek=6 conv=notrunc
+# Lists of object files
+ASM_OBJS = kernel.o trapa.o liba.o
+C_OBJS   = main.o trap.o print.o
+ALL_OBJS = $(ASM_OBJS) $(C_OBJS)
 
+# Phony targets
+.PHONY: all clean
+
+# Default rule
+all: $(IMAGE)
+
+# Rule to create the final boot image
+$(IMAGE): boot.bin loader.bin kernel.bin
+	$(DD) if=boot.bin of=$(IMAGE) bs=512 count=1 conv=notrunc
+	$(DD) if=loader.bin of=$(IMAGE) bs=512 count=5 seek=1 conv=notrunc
+	$(DD) if=kernel.bin of=$(IMAGE) bs=512 count=100 seek=6 conv=notrunc
+
+# Rules for raw binaries
 boot.bin: boot.asm
-	$(NASM) $(NASM_BIN_FLAGS) -o boot.bin boot.asm
+	$(NASM) -f bin -o $@ $<
 
 loader.bin: loader.asm
-	$(NASM) $(NASM_BIN_FLAGS) -o loader.bin loader.asm
+	$(NASM) -f bin -o $@ $<
 
 kernel.bin: kernel
-	$(OBJCOPY) -O binary kernel kernel.bin
+	$(OBJCOPY) -O binary $< $@
 
-kernel: kernel.o main.o trapa.o trap.o liba.o
-	$(LD) $(LD_FLAGS) -o kernel kernel.o main.o trapa.o trap.o liba.o
+# Rule to link the kernel elf
+kernel: $(ALL_OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(ALL_OBJS)
 
+# Rules for Assembly object files (ELF64)
 kernel.o: kernel.asm
-	$(NASM) $(NASM_ELF_FLAGS) -o kernel.o kernel.asm
+	$(NASM) -f elf64 -o $@ $<
 
 trapa.o: trap.asm
-	$(NASM) $(NASM_ELF_FLAGS) -o trapa.o trap.asm
+	$(NASM) -f elf64 -o $@ $<
 
 liba.o: lib.asm
-	$(NASM) $(NASM_ELF_FLAGS) -o liba.o lib.asm
+	$(NASM) -f elf64 -o $@ $<
 
-main.o: main.c
-	$(GCC) $(GCC_FLAGS) main.c -o main.o
+# Implicit rule for C object files
+%.o: %.c
+	$(CC) $(CFLAGS) -o $@ $<
 
-trap.o: trap.c
-	$(GCC) $(GCC_FLAGS) trap.c -o trap.o
-
+# Clean up build files
 clean:
-	rm -f *.bin *.o kernel
-	git checkout boot.img
-
-.PHONY: all clean
+	rm -f *.o *.bin kernel
+	git checkout $(IMAGE)

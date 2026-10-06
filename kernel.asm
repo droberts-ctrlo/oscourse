@@ -88,11 +88,8 @@ KernelEntry:
     xor ax,ax               ; Clear AX register
     mov ss,ax               ; Set stack segment to 0
     
-    mov rsp,0x200000        ; Set the stack pointer to 0x200000
-    
     mov rsp,0x200000        ; Set the stack pointer to 0x200000 before calling the kernel main function
     call KMain              ; Call the kernel main function
-    sti                     ; Enable interrupts
 
 End:
     hlt                     ; Halt the CPU
