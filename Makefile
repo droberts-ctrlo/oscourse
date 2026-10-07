@@ -13,7 +13,7 @@ IMAGE   = boot.img
 
 # Lists of object files
 ASM_OBJS = kernel.o trapa.o liba.o
-C_OBJS   = main.o trap.o print.o
+C_OBJS   = main.o trap.o print.o debug.o
 ALL_OBJS = $(ASM_OBJS) $(C_OBJS)
 
 # Phony targets
