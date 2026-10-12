@@ -66,5 +66,3 @@ times (0x1be-($-$$)) db 0
 
     db 0x55
     db 0xaa
-
-	

@@ -33,21 +33,23 @@ GetMemInfoStart:
     mov eax,0xe820          ; Get system memory map
     mov edx,0x534d4150      ; 'SMAP' signature for the memory map
     mov ecx,20              ; Size of the memory map entry structure
-    mov edi,0x9000          ; Address to store the memory map entries
+    mov dword[0x9000],0     ; Address to store the memory map size
+    mov edi,0x9008          ; Address to store the memory map entries
     xor ebx,ebx             ; Clear EBX before calling the memory map function
     int 0x15                ; Call BIOS to get the memory map
     jc NotSupport           ; Jump to NotSupport if the call fails
 
 GetMemInfo:
     add edi,20              ; Move to the next memory map entry
+    inc dword[0x9000]       ; Increment the memory map size counter
+    test ebx,ebx            ; Check if there are more memory map entries
+    jz GetMemDone           ; Jump to GetMemDone if there are no more memory map entries
+
     mov eax,0xe820          ; Get system memory map
     mov edx,0x534d4150      ; 'SMAP' signature for the memory map
     mov ecx,20              ; Size of the memory map entry structure
     int 0x15                ; Call BIOS to get the next memory map entry
-    jc GetMemDone           ; Jump to GetMemDone if the call fails
-
-    test ebx,ebx            ; Check if there are more memory map entries
-    jnz GetMemInfo          ; Jump to GetMemInfo if there are more memory map entries
+    jnc GetMemInfo          ; Jump to GetMemInfo if the call was successful
 
 GetMemDone:
 TestA20:
@@ -59,7 +61,6 @@ TestA20:
     mov word[0x7c00],0xb200         ; Write another test value
     cmp word[es:0x7c10],0xb200      ; Compare with mirrored address
     je End                          ; If equal, jump to End
-    
 
 SetA20LineDone:
     xor ax,ax                        ; Clear AX register
@@ -85,7 +86,6 @@ End:
     hlt                     ; Halt the CPU
     jmp End                 ; Loop indefinitely after halting the CPU
 
-
 [BITS 32]
 PMEntry:
     mov ax,0x10             ; Set data segment selector for protected mode
@@ -102,7 +102,6 @@ PMEntry:
     
     mov dword[0x70000],0x71007       ; Set up initial memory values
     mov dword[0x71000],10000111b     ; Set up initial memory values
-
 
     lgdt [Gdt64Ptr]           ; Load the Global Descriptor Table for 64-bit mode
 
@@ -170,7 +169,6 @@ Gdt32Ptr: dw Gdt32Len-1
 
 Idt32Ptr: dw 0
           dd 0
-
 
 Gdt64:
     dq 0
