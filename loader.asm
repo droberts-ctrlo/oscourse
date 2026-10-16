@@ -103,6 +103,11 @@ PMEntry:
     mov dword[0x70000],0x71007       ; Set up initial memory values
     mov dword[0x71000],10000111b     ; Set up initial memory values
 
+    mov eax,(0xffff800000200000 >> 39) ; Shift the virtual address to get the page map level 4 index
+    and eax,0x1ff               ; Mask to get the relevant bits for the page table index
+    mov dword[0x70000 + eax*8], 0x72003 ; Set the page map level 4 entry to point to the next level page table
+    mov dword[0x72000], 10000011b ; Set the page directory entry to point to the next level page table
+
     lgdt [Gdt64Ptr]           ; Load the Global Descriptor Table for 64-bit mode
 
     mov eax,cr4               ; Read CR4 register
@@ -136,7 +141,8 @@ LMEntry:
     mov rcx,51200/8             ; Number of quad words to copy
     rep movsq                   ; Copy memory from source to destination
 
-    jmp 0x200000                ; Jump to the copied memory location
+    mov rax,0xffff800000200000  ; Load the address of the copied memory into RAX register
+    jmp rax                      ; Jump to the copied memory location
     
 LEnd:
     hlt                         ; Halt the CPU

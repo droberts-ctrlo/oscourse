@@ -21,7 +21,7 @@ Gdt64Ptr: dw Gdt64Len-1
 
 Tss:
     dd 0
-    dq 0x190000
+    dq 0xffff800000190000
     times 88 db 0
     dd TssLen
 
@@ -32,17 +32,19 @@ extern KMain
 global start
 
 start:
-    lgdt [Gdt64Ptr]         ; Load the address of the GDT into the GDTR register
+    mov rax, Gdt64Ptr       ; Load the memory address for the GDT into RAX register
+    lgdt [rax]              ; Load the address of the GDT into the GDTR register
 
 SetTss:
     mov rax,Tss             ; Load the address of the TSS into RAX register
-    mov [TssDesc+2],ax      ; Set the low 16 bits of the TSS base address
+    mov rdi, TssDesc        ; Load the address of the TSS descriptor into RDI register
+    mov [rdi+2],ax          ; Set the low 16 bits of the TSS base address
     shr rax,16
-    mov [TssDesc+4],al      ; Set the next 8 bits of the TSS base address
+    mov [rdi+4],al          ; Set the next 8 bits of the TSS base address
     shr rax,8
-    mov [TssDesc+7],al      ; Set the next 8 bits of the TSS base address
+    mov [rdi+7],al          ; Set the next 8 bits of the TSS base address
     shr rax,8
-    mov [TssDesc+8],eax     ; Set the high 32 bits of the TSS base address
+    mov [rdi+8],eax         ; Set the high 32 bits of the TSS base address
     mov ax,0x20             ; Load the TSS selector into AX
     ltr ax                  ; Load the TSS into the task register
 
@@ -79,17 +81,15 @@ InitPIC:
     mov al,11111111b
     out 0xa1,al             ; Mask all interrupts on slave PIC
 
+    mov rax, KernelEntry    ; Load the address of the kernel entry point into RAX register
     push 8                  ; Push the code segment selector onto the stack
-    push KernelEntry        ; Push the address of the kernel entry point onto the stack
+    push rax                ; Push the address of the kernel entry point onto the stack
     db 0x48                 ; Operand-size override prefix for the far return
     retf                    ; Far return to switch to the new code segment and jump to the kernel entry point
 
 KernelEntry: 
-    xor ax,ax               ; Clear AX register
-    mov ss,ax               ; Set stack segment to 0
-    
-    mov rsp,0x200000        ; Set the stack pointer to 0x200000 before calling the kernel main function
-    call KMain              ; Call the kernel main function
+    mov rsp,0xffff800000190000  ; Set the stack pointer to 0x200000 before calling the kernel main function
+    call KMain                  ; Call the kernel main function
 
 End:
     hlt                     ; Halt the CPU
