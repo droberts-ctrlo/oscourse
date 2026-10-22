@@ -88,7 +88,7 @@ InitPIC:
     retf                    ; Far return to switch to the new code segment and jump to the kernel entry point
 
 KernelEntry: 
-    mov rsp,0xffff800000190000  ; Set the stack pointer to 0x200000 before calling the kernel main function
+    mov rsp,0xffff800000200000  ; Set the stack pointer to 0x200000 before calling the kernel main function
     call KMain                  ; Call the kernel main function
 
 End:

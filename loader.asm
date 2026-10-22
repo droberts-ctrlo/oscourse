@@ -100,10 +100,10 @@ PMEntry:
     mov ecx,0x10000/4       ; Number of double words to initialize
     rep stosd               ; Initialize memory with zeros
     
-    mov dword[0x70000],0x71007       ; Set up initial memory values
-    mov dword[0x71000],10000111b     ; Set up initial memory values
+    mov dword[0x70000],0x71003       ; Set up initial memory values
+    mov dword[0x71000],10000011b     ; Set up initial memory values
 
-    mov eax,(0xffff800000200000 >> 39) ; Shift the virtual address to get the page map level 4 index
+    mov eax,(0xffff800000000000 >> 39) ; Shift the virtual address to get the page map level 4 index
     and eax,0x1ff               ; Mask to get the relevant bits for the page table index
     mov dword[0x70000 + eax*8], 0x72003 ; Set the page map level 4 entry to point to the next level page table
     mov dword[0x72000], 10000011b ; Set the page directory entry to point to the next level page table

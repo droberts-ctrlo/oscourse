@@ -42,10 +42,6 @@ Trap:
     push r14
     push r15
 
-    ; Increment the trap counter and set the trap indicator
-    inc byte[0xb8010]
-    mov byte[0xb8011],0xe
-
     ; Pass the stack pointer to the trap handler in RDI
     mov rdi,rsp
     call handler
