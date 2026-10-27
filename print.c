@@ -2,10 +2,11 @@
 #include "stdarg.h"
 #include "print.h"
 #include "lib.h"
+#include "memory.h"
 
 // Screen buffer for printing to the screen
 // Initialize the screen buffer with the default video memory address and starting position
-static struct ScreenBuffer screen_buffer = {(char*)0xb8000, 0, 0};
+static struct ScreenBuffer screen_buffer = {(char*)P2V(0xb8000), 0, 0};
 
 // Convert an unsigned decimal number to a string and store it in the buffer at the given position
 static int udecimal_to_string(char *buffer, int position, uint64_t digits)

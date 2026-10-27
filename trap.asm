@@ -23,9 +23,9 @@ global vector39
 global eoi
 global read_isr
 global load_idt
+global load_cr3
 
 Trap:
-    ; Save the CPU state before handling the trap
     push rax
     push rbx
     push rcx
@@ -175,6 +175,11 @@ read_isr:
 
 load_idt:
     lidt [rdi]
+    ret
+
+load_cr3:
+    mov rax,rdi
+    mov cr3,rax
     ret
 
 
