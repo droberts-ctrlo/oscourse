@@ -51,7 +51,7 @@ void handler(struct TrapFrame *tf)
         case 32:
             eoi();
             break;
-            
+
         case 39:
             isr_value = read_isr();
             if ((isr_value&(1<<7)) != 0) {

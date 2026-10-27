@@ -80,17 +80,17 @@ static void write_screen(const char *buffer, int size, struct ScreenBuffer *sb, 
     int column = sb->column;
     int row = sb->row;
 
-    for (int i = 0; i < size; i++) {       
+    for (int i = 0; i < size; i++) {
         if (row >= 25) {
             memcpy(sb->buffer,sb->buffer+LINE_SIZE,LINE_SIZE*24);
             memset(sb->buffer+LINE_SIZE*24,0,LINE_SIZE);
             row--;
         }
-        
+
         if (buffer[i] == '\n') {
             column = 0;
             row++;
-        } 
+        }
         else {
             sb->buffer[column*2+row*LINE_SIZE] = buffer[i];
             sb->buffer[column*2+row*LINE_SIZE+1] = color;
@@ -149,7 +149,7 @@ int printk(const char *format, ...)
                     buffer[buffer_size++] = '%';
                     i--;
             }
-        }     
+        }
     }
 
     write_screen(buffer, buffer_size, &screen_buffer, 0xf);

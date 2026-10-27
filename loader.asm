@@ -2,7 +2,7 @@
 [ORG 0x7e00]
 
 start:
-    mov [DriveId],dl        ; Store the drive ID passed in DL into the DriveId variable 
+    mov [DriveId],dl        ; Store the drive ID passed in DL into the DriveId variable
 
     mov eax,0x80000000      ; Get the highest extended function supported by CPUID
     cpuid                   ; Call CPUID with EAX=0x80000000
@@ -69,7 +69,7 @@ SetA20LineDone:
 SetVideoMode:
     mov ax,3                ; Set video mode to 80x25 text mode
     int 0x10                ; Call BIOS to set the video mode
-    
+
     cli                     ; Clear interrupts before entering protected mode
     lgdt [Gdt32Ptr]         ; Load the Global Descriptor Table for 32-bit mode
     lidt [Idt32Ptr]         ; Load the Interrupt Descriptor Table for 32-bit mode
@@ -99,7 +99,7 @@ PMEntry:
     xor eax,eax             ; Clear EAX register
     mov ecx,0x10000/4       ; Number of double words to initialize
     rep stosd               ; Initialize memory with zeros
-    
+
     mov dword[0x70000],0x71003       ; Set up initial memory values
     mov dword[0x71000],10000011b     ; Set up initial memory values
 
@@ -143,7 +143,7 @@ LMEntry:
 
     mov rax,0xffff800000200000  ; Load the address of the copied memory into RAX register
     jmp rax                      ; Jump to the copied memory location
-    
+
 LEnd:
     hlt                         ; Halt the CPU
     jmp LEnd                    ; Loop indefinitely after halting the CPU
@@ -167,7 +167,7 @@ Data32:
     db 0x92
     db 0xcf
     db 0
-    
+
 Gdt32Len: equ $-Gdt32
 
 Gdt32Ptr: dw Gdt32Len-1

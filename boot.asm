@@ -61,7 +61,7 @@ times (0x1be-($-$$)) db 0
     db 0ffh,0ffh,0ffh
     dd 1
     dd (20*16*63-1)
-	
+
     times (16*3) db 0
 
     db 0x55

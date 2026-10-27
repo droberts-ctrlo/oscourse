@@ -27,9 +27,9 @@ global load_idt
 Trap:
     ; Save the CPU state before handling the trap
     push rax
-    push rbx  
+    push rbx
     push rcx
-    push rdx  	  
+    push rdx
     push rsi
     push rdi
     push rbp
@@ -58,11 +58,11 @@ TrapReturn:
     pop	r8
     pop	rbp
     pop	rdi
-    pop	rsi  
+    pop	rsi
     pop	rdx
     pop	rcx
     pop	rbx
-    pop	rax       
+    pop	rax
 
     add rsp,16
     iretq
@@ -86,70 +86,70 @@ vector2:
 
 vector3:
     push 0
-    push 3	
-    jmp Trap 
+    push 3
+    jmp Trap
 
 vector4:
     push 0
-    push 4	
-    jmp Trap   
+    push 4
+    jmp Trap
 
 vector5:
     push 0
     push 5
-    jmp Trap    
+    jmp Trap
 
 vector6:
     push 0
-    push 6	
-    jmp Trap      
+    push 6
+    jmp Trap
 
 vector7:
     push 0
-    push 7	
-    jmp Trap  
+    push 7
+    jmp Trap
 
 vector8:
     push 8
-    jmp Trap  
+    jmp Trap
 
 vector10:
-    push 10	
-    jmp Trap 
-                   
+    push 10
+    jmp Trap
+
 vector11:
-    push 11	
+    push 11
     jmp Trap
-    
+
 vector12:
-    push 12	
-    jmp Trap          
-          
-vector13:
-    push 13	
+    push 12
     jmp Trap
-    
+
+vector13:
+    push 13
+    jmp Trap
+
 vector14:
-    push 14	
-    jmp Trap 
+    push 14
+    jmp Trap
 
 vector16:
     push 0
-    push 16	
-    jmp Trap          
-          
+    push 16
+    jmp Trap
+
 vector17:
-    push 17	
-    jmp Trap                         
-                                                          
+    push 17
+    jmp Trap
+
 vector18:
     push 0
-    push 18	
-    jmp Trap 
-                   
+    push 18
+    jmp Trap
+
 vector19:
     push 0
-    push 19	
+    push 19
     jmp Trap
 
 vector32:

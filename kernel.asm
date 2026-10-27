@@ -87,7 +87,7 @@ InitPIC:
     db 0x48                 ; Operand-size override prefix for the far return
     retf                    ; Far return to switch to the new code segment and jump to the kernel entry point
 
-KernelEntry: 
+KernelEntry:
     mov rsp,0xffff800000200000  ; Set the stack pointer to 0x200000 before calling the kernel main function
     call KMain                  ; Call the kernel main function
 

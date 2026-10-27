@@ -10,45 +10,46 @@ static struct Page free_memory;
 static uint64_t memory_end;
 extern char end;
 
-void init_memory(void) {
-    int32_t count = *(int32_t *)0x9000; // memory map count location
+void init_memory(void)
+{
+    int32_t count = *(int32_t*)0x9000;
     uint64_t total_mem = 0;
-    struct E820 *memory_map = (struct E820 *)0x9008; // memory map base location
+    struct E820 *mem_map = (struct E820*)0x9008;
     int free_region_count = 0;
 
-    ASSERT(count <= 50); // Ensure we don't exceed the free_mem_region array size
+    ASSERT(count <= 50);
 
-    for(int32_t i = 0; i < count; i++) {
-        if(memory_map[i].type == 1) { // Type 1 indicates available RAM
-            free_mem_region[free_region_count].address = memory_map[i].address;
-            free_mem_region[free_region_count].length = memory_map[i].length;
-            total_mem += memory_map[i].length;
+	for(int32_t i = 0; i < count; i++) {
+        if(mem_map[i].type == 1) {
+            free_mem_region[free_region_count].address = mem_map[i].address;
+            free_mem_region[free_region_count].length = mem_map[i].length;
+            total_mem += mem_map[i].length;
             free_region_count++;
         }
-    
-        printk("%x %uKB %u\n", memory_map[i].address, memory_map[i].length / 1024, (uint64_t)memory_map[i].type);
-    }
+        printk("%x  %uKB  %u\n",mem_map[i].address,mem_map[i].length/1024,(uint64_t)mem_map[i].type);
+	}
 
-    for (int i =0; i < free_region_count; i++) {
+    for (int i = 0; i < free_region_count; i++) {
         uint64_t vstart = P2V(free_mem_region[i].address);
         uint64_t vend = vstart + free_mem_region[i].length;
 
-        if(vstart < (uint64_t)&end) {
-            free_region(vstart,vend);
+        if (vstart > (uint64_t)&end) {
+            free_region(vstart, vend);
         }
-        if(vstart < (uint64_t)&end) {
+        else if (vend > (uint64_t)&end) {
             free_region((uint64_t)&end, vend);
         }
     }
 
     memory_end = (uint64_t)free_memory.next+PAGE_SIZE;
-    printk("%x\n", memory_end);
+    printk("%x\n",memory_end);
 }
 
-static void free_region(uint64_t v, uint64_t e) {
-    for(uint64_t start=PA_UP(v); start+PAGE_SIZE <= e; start+=PAGE_SIZE) {
-        if(start+PAGE_SIZE <= 0xffff800040000000) {
-            kfree(start);
+static void free_region(uint64_t v, uint64_t e)
+{
+    for (uint64_t start = PA_UP(v); start+PAGE_SIZE <= e; start += PAGE_SIZE) {
+        if (start+PAGE_SIZE <= 0xffff800040000000) {
+           kfree(start);
         }
     }
 }
@@ -73,8 +74,8 @@ void* kalloc(void)
         ASSERT((uint64_t)page_address >= (uint64_t)&end);
         ASSERT((uint64_t)page_address+PAGE_SIZE <= 0xffff800040000000);
 
-        free_memory.next = page_address->next;            
+        free_memory.next = page_address->next;
     }
-    
+
     return page_address;
 }
