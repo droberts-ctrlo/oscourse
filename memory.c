@@ -13,6 +13,7 @@ static uint64_t memory_end;
 uint64_t page_map;
 extern char end;
 
+// initialize memory free list
 void init_memory(void)
 {
     int32_t count = *(int32_t*)0x9000;
@@ -48,6 +49,7 @@ void init_memory(void)
     printk("%x\n",memory_end);
 }
 
+// free a memory region
 static void free_region(uint64_t v, uint64_t e)
 {
     for (uint64_t start = PA_UP(v); start+PAGE_SIZE <= e; start += PAGE_SIZE) {
@@ -57,6 +59,7 @@ static void free_region(uint64_t v, uint64_t e)
     }
 }
 
+// free a page
 void kfree(uint64_t v)
 {
     ASSERT(v % PAGE_SIZE == 0);
@@ -68,6 +71,7 @@ void kfree(uint64_t v)
     free_memory.next = page_address;
 }
 
+// allocate a page
 void* kalloc(void)
 {
     struct Page *page_address = free_memory.next;
@@ -83,6 +87,7 @@ void* kalloc(void)
     return page_address;
 }
 
+// find pml4t entry for v, alloc if needed
 static PDPTR find_pml4t_entry(uint64_t map, uint64_t v, int alloc, uint32_t attribute)
 {
     PDPTR *map_entry = (PDPTR*)map;
@@ -103,6 +108,7 @@ static PDPTR find_pml4t_entry(uint64_t map, uint64_t v, int alloc, uint32_t attr
     return pdptr;
 }
 
+// find pdpt entry for v, alloc if needed
 static PD find_pdpt_entry(uint64_t map, uint64_t v, int alloc, uint32_t attribute)
 {
     PDPTR pdptr = NULL;
@@ -127,6 +133,7 @@ static PD find_pdpt_entry(uint64_t map, uint64_t v, int alloc, uint32_t attribut
     return pd;
 }
 
+// map virtual pages to physical pages
 bool map_pages(uint64_t map, uint64_t v, uint64_t e, uint64_t pa, uint32_t attribute)
 {
     uint64_t vstart = PA_DOWN(v);
@@ -156,11 +163,13 @@ bool map_pages(uint64_t map, uint64_t v, uint64_t e, uint64_t pa, uint32_t attri
     return true;
 }
 
+// switch to a new page map
 void switch_vm(uint64_t map)
 {
     load_cr3(V2P(map));
 }
 
+// setup kernel page map
 static void setup_kvm(void)
 {
     page_map = (uint64_t)kalloc();
@@ -171,9 +180,79 @@ static void setup_kvm(void)
     ASSERT(status == true);
 }
 
+// initialize kernel vm and switch to it
 void init_kvm(void)
 {
     setup_kvm();
     switch_vm(page_map);
     printk("memory manager is working now");
+}
+
+// free virtual pages in a range
+void free_pages(uint64_t map, uint64_t vstart, uint64_t vend)
+{
+    unsigned int index; 
+
+    ASSERT(vstart % PAGE_SIZE == 0);
+    ASSERT(vend % PAGE_SIZE == 0);
+
+    do {
+        PD pd = find_pdpt_entry(map, vstart, 0, 0);
+
+        if (pd != NULL) {
+            index = (vstart >> 21) & 0x1FF;
+            ASSERT(pd[index] & PTE_P);           
+            kfree(P2V(PTE_ADDR(pd[index])));
+            pd[index] = 0;
+        }
+
+        vstart += PAGE_SIZE;
+    } while (vstart+PAGE_SIZE <= vend);
+}
+
+// free pd table
+static void free_pdt(uint64_t map)
+{
+    PDPTR *map_entry = (PDPTR*)map;
+
+    for (int i = 0; i < 512; i++) {
+        if ((uint64_t)map_entry[i] & PTE_P) {            
+            PD *pdptr = (PD*)P2V(PDE_ADDR(map_entry[i]));
+            
+            for (int j = 0; j < 512; j++) {
+                if ((uint64_t)pdptr[j] & PTE_P) {
+                    kfree(P2V(PDE_ADDR(pdptr[j])));
+                    pdptr[j] = 0;
+                }
+            }
+        }
+    }
+}
+
+// free pdpt table
+static void free_pdpt(uint64_t map)
+{
+    PDPTR *map_entry = (PDPTR*)map;
+
+    for (int i = 0; i < 512; i++) {
+        if ((uint64_t)map_entry[i] & PTE_P) {          
+            kfree(P2V(PDE_ADDR(map_entry[i])));
+            map_entry[i] = 0;
+        }
+    }
+}
+
+// free pml4 table
+static void free_pml4t(uint64_t map)
+{
+    kfree(map);
+}
+
+// free all page tables
+void free_vm(uint64_t map)
+{   
+    //free_pages(map,vstart,vend);
+    free_pdt(map);
+    free_pdpt(map);
+    free_pml4t(map);
 }

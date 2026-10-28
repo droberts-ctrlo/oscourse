@@ -38,12 +38,15 @@ typedef PD* PDPTR;
 #define PDE_ADDR(p) (((uint64_t)p >> 12) << 12)
 #define PTE_ADDR(p) (((uint64_t)p >> 21) << 21)
 
-void init_memory(void);
-void init_kvm(void);
-void switch_vm(uint64_t map);
 void* kalloc(void);
 void kfree(uint64_t v);
+void init_memory(void);
+void init_kvm(void);
 bool map_pages(uint64_t map, uint64_t v, uint64_t e, uint64_t pa, uint32_t attribute);
+void switch_vm(uint64_t map);
 void load_cr3(uint64_t map);
+void free_vm(uint64_t map);
+void free_page(uint64_t map, uint64_t v, uint64_t e);
+
 
 #endif
