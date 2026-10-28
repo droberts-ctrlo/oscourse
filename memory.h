@@ -47,6 +47,8 @@ void switch_vm(uint64_t map);
 void load_cr3(uint64_t map);
 void free_vm(uint64_t map);
 void free_page(uint64_t map, uint64_t v, uint64_t e);
+bool setup_uvm(uint64_t map, uint64_t start, int size);
+uint64_t setup_kvm(void);
 
 
 #endif
